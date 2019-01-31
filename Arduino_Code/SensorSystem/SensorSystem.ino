@@ -24,16 +24,19 @@ SGP30 demo by SparkFun Electronics
 #include <Wire.h>
 #include <SHT35.h>
 #define debug false
+#define CO2PIN 3
 #define RSTPIN  2
 #define SERIALCOM Serial
 SGP30 mySGP30; //create an object of the SGP30 class
 char c;
 String userInput;
 long t1, t2;
-short COtwo, RawTemp, RawRH, AbsHum; 
+short COtwo, RawTemp, RawRH, AbsHum, CO2setp; 
 float Temp, RH;
 
 void setup() {
+  pinMode(CO2PIN, OUTPUT);
+  digitalWrite(CO2PIN,LOW);
   SERIALCOM.begin(115200);
   while(!SERIALCOM);
   Wire.begin();
@@ -50,6 +53,7 @@ void setup() {
   RawTemp = 0;
   RawRH = 0;
   AbsHum = 0;
+  CO2setp = 5000;
 }
 
 void loop() {
@@ -69,6 +73,9 @@ void loop() {
         SERIALCOM.write(RawTemp);SERIALCOM.write(RawTemp>> 8);
         SERIALCOM.write(RawRH);SERIALCOM.write(RawRH>> 8);
         SERIALCOM.write(AbsHum);SERIALCOM.write(AbsHum>> 8);        
+    } else if (userInput.length() == 4){ //setpoint given
+      CO2setp = userInput.toInt();
+      SERIALCOM.println(CO2setp);
     } else {
       SERIALCOM.print("unknown command: ");
       SERIALCOM.print(userInput);
@@ -94,6 +101,11 @@ void loop() {
     //measure CO2 and TVOC levels
     mySGP30.measureAirQuality();
     COtwo = mySGP30.CO2;
+    if (COtwo<CO2setp){
+      digitalWrite(CO2PIN,HIGH); 
+    } else{
+      digitalWrite(CO2PIN,LOW); 
+    }
     if (debug){
       SERIALCOM.print("Temp =          ");SERIALCOM.print(Temp);SERIALCOM.print("\n");
       SERIALCOM.print("RH =            ");SERIALCOM.print(RH);SERIALCOM.print("\n");
