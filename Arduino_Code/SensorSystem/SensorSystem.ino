@@ -25,11 +25,11 @@ Based on: Mod_1030 demo by Embedded Adventures
 #include <Wire.h>
 #include <SHT35.h>
 #include <NDIR_I2C.h>
-#define debug false
 #define CO2PIN 4
 #define INTPIN 3
 #define RSTPIN 2
 #define SERIALCOM Serial
+boolean debug;
 char c;
 String userInput;
 long t1, t2, COtwo, CO2setp;
@@ -40,7 +40,7 @@ NDIR_I2C CO2Sensor(0x4D);
 void setup() {
   pinMode(CO2PIN, OUTPUT);
   digitalWrite(CO2PIN,LOW);
-  SERIALCOM.begin(115200);
+  SERIALCOM.begin(9600);
   while(!SERIALCOM);
   Wire.begin();
   mod1030.init(0, 0, RSTPIN);
@@ -51,7 +51,7 @@ void setup() {
   RawRH = 0;
   AbsHum = 0;
   CO2setp = 50000; //50.000 ppm = 5%
-  
+  debug = false;
   if (CO2Sensor.begin()) {
         delay(10000);
     } else {
@@ -77,6 +77,10 @@ void loop() {
         SERIALCOM.write(RawTemp);SERIALCOM.write(RawTemp>> 8);
         SERIALCOM.write(RawRH);SERIALCOM.write(RawRH>> 8);
         SERIALCOM.write(AbsHum);SERIALCOM.write(AbsHum>> 8);        
+    } else if (userInput =="debug on") {
+      debug = true;
+    } else if (userInput =="debug off") {
+      debug = false;
     } else if (userInput.length() == 5){ //setpoint given
       CO2setp = userInput.toInt();
       SERIALCOM.println(CO2setp);
@@ -120,6 +124,11 @@ void loop() {
       SERIALCOM.print("RawTemp =       ");SERIALCOM.print(RawTemp);SERIALCOM.print("\n");
       SERIALCOM.print("RawRH =         ");SERIALCOM.print(RawRH);SERIALCOM.print("\n");
       SERIALCOM.print("COtwo =         ");SERIALCOM.print(COtwo);SERIALCOM.print("\n");
+      if (COtwo<CO2setp){
+        SERIALCOM.print("COtwo ON\n");
+      } else {
+        SERIALCOM.print("COtwo OFF\n");
+      }
     }
   }
 }

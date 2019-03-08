@@ -15,7 +15,7 @@ while isvalid(f)
     subplot(4,1,2);plot(t,RH);title(sprintf('RH (%.1f %%)',RH(end)))
     subplot(4,1,3);plot(t,Te);title(sprintf('Temperature(%.2f °C)',Te(end)))
     subplot(4,1,4);plot(t,AH);title(sprintf('AH(%.2f g/m3)',AH(end)))
-    pause(1);
+    pause(2);
     SS=SS.read();
     t(end+1)=datetime('now');
     CO2(end+1) = SS.CO2;

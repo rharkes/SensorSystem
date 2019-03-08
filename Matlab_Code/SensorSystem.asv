@@ -48,7 +48,7 @@ classdef SensorSystem
             while obj.s.BytesAvailable<2
                 pause(0.01)
             end
-            pause(0.05); %time for the sensorsystem to send everything to the comport 9600 bits/sec, 0.05sec, 480 bits, 60 bytes, should be more than enough time to send 10 bytes.
+            pause(0.05); %time for the sensorsystem to send everything to the comport 9600 bits/sec, 480 bits, 60 bytes, should be more than enough time.
             data = uint8(fread(obj.s,obj.s.BytesAvailable,'uint8'));
             if length(data)==10
                 COtwo = typecast(data(1:4),'uint32');
@@ -64,7 +64,8 @@ classdef SensorSystem
                 obj.Temperature = (double(T_Raw) / 65535.00) * 175 - 45;
                 obj.AbsoluteHumidity = double(AH_Raw)/2^8;
             else
-                warning('incorrect data from SensorSystem:%.0f\n',data)
+                warning('incorrect data from SensorSystem:')
+                fprintf(1,'%.0f\n',data)
             end
         end
         
