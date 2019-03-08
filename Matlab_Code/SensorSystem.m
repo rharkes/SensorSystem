@@ -33,7 +33,7 @@ classdef SensorSystem
             end
             ID = fscanf(obj.s);
             if ~strcmp(ID,sprintf('SensorSystem\r\n'))
-                error('SensorSystem not found');
+                error('SensorSystem not found; found %s on port %s',ID,obj.port);
             end
         end
         
@@ -46,16 +46,16 @@ classdef SensorSystem
             end
             
             data = uint8(fread(obj.s,obj.s.BytesAvailable,'uint8'));
-            if length(data)==8
-                COtwo = typecast(data(1:2),'uint16');
+            if length(data)==10
+                COtwo = typecast(data(1:4),'uint32');
                 if COtwo==0,COtwo=nan;end
-                T_Raw = typecast(data(3:4),'uint16');
+                T_Raw = typecast(data(5:6),'uint16');
                 if T_Raw==0,T_Raw=nan;end
-                RH_Raw = typecast(data(5:6),'uint16');
+                RH_Raw = typecast(data(7:8),'uint16');
                 if RH_Raw==0,RH_Raw=nan;end
-                AH_Raw = typecast(data(7:8),'uint16');
+                AH_Raw = typecast(data(9:10),'uint16');
                 if AH_Raw==0,AH_Raw=nan;end
-                obj.CO2 = double(COtwo);
+                obj.CO2 = double(COtwo)/1E4; %in procent
                 obj.RelativeHumidity = (double(RH_Raw) / 65535.0) * 100.0;
                 obj.Temperature = (double(T_Raw) / 65535.00) * 175 - 45;
                 obj.AbsoluteHumidity = double(AH_Raw)/2^8;

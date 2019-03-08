@@ -1,3 +1,4 @@
+if~isempty(instrfind),fclose(instrfind);end %close all serial ports 
 SS=SensorSystem();
 while (any(isnan([SS.CO2,SS.RelativeHumidity,SS.Temperature])))
     SS=SS.read();
@@ -10,7 +11,7 @@ Te = SS.Temperature;
 AH = SS.AbsoluteHumidity;
 f =figure(1);clf;
 while isvalid(f)
-    subplot(4,1,1);plot(t,CO2);title(sprintf('CO2 (%.0f ppm)',CO2(end)))
+    subplot(4,1,1);plot(t,CO2);title(sprintf('CO2 (%.2f %%)',CO2(end)))
     subplot(4,1,2);plot(t,RH);title(sprintf('RH (%.1f %%)',RH(end)))
     subplot(4,1,3);plot(t,Te);title(sprintf('Temperature(%.2f °C)',Te(end)))
     subplot(4,1,4);plot(t,AH);title(sprintf('AH(%.2f g/m3)',AH(end)))

@@ -3,36 +3,39 @@ Arduino code for a temperature, RH, and humidity sensor / controller.
 To be operated over a serial connection.
 Consists of:
 1) a SHT35 MOD-1030 Humidity and Temperature Sensor
-2) a Sensirion SGP30 Indoor Air Quality Sensor. 
+2) a SandboxElectronics/NDIR
+
+The NDIR sends 8 bytes. The CO2 concentration is a uint32 in ppm.
+
 
 It logs every second and sends the most recent value on request.
 To operate, Send message of format '?\r'
-The response will be 8 bytes containing the raw uint16 values for CO2 Temp RH AH
+The response will be 4+2+2+2 = 10 bytes containing the raw values for CO2 Temp RH AH
 //(raw_T / 65535.00) * 175 - 45; (raw_RH / 65535.0) * 100.0; AH_Raw/2^8;
-Temp, RH, CO2, AH
+CO2, Temp, RH, AH
    
 R.Harkes NKI
 (c) 2018 GPLv3
 
 Based on: Mod_1030 demo by Embedded Adventures
-SGP30 demo by SparkFun Electronics
 ******************************************************************************/
 
 // SHT35 MOD-1030 Humidity and Temperature Sensor Arduino test sketch
 // Written originally by Embedded Adventures 
-#include "SparkFun_SGP30_Arduino_Library.h" 
 #include <Wire.h>
 #include <SHT35.h>
+#include <NDIR_I2C.h>
 #define debug false
-#define CO2PIN 3
-#define RSTPIN  2
+#define CO2PIN 4
+#define INTPIN 3
+#define RSTPIN 2
 #define SERIALCOM Serial
-SGP30 mySGP30; //create an object of the SGP30 class
 char c;
 String userInput;
-long t1, t2;
-short COtwo, RawTemp, RawRH, AbsHum, CO2setp; 
+long t1, t2, COtwo, CO2setp;
+short RawTemp, RawRH, AbsHum; 
 float Temp, RH;
+NDIR_I2C CO2Sensor(0x4D);
 
 void setup() {
   pinMode(CO2PIN, OUTPUT);
@@ -40,12 +43,6 @@ void setup() {
   SERIALCOM.begin(115200);
   while(!SERIALCOM);
   Wire.begin();
-  //Initialize sensor
-  if (mySGP30.begin() == false) {
-    SERIALCOM.println("No SGP30 Detected. Check connections.");
-    while (1);
-  }
-  mySGP30.initAirQuality();
   mod1030.init(0, 0, RSTPIN);
   mod1030.hardReset();
   t1 = millis();
@@ -53,7 +50,14 @@ void setup() {
   RawTemp = 0;
   RawRH = 0;
   AbsHum = 0;
-  CO2setp = 5000;
+  CO2setp = 50000; //50.000 ppm = 5%
+  
+  if (CO2Sensor.begin()) {
+        delay(10000);
+    } else {
+        Serial.println("ERROR: Failed to connect to the sensor.");
+        while(1);
+    }
 }
 
 void loop() {
@@ -69,11 +73,11 @@ void loop() {
     {
       Identify();
     } else if (userInput =="?"){ //write values as 8 bytes
-        SERIALCOM.write(COtwo);SERIALCOM.write(COtwo>> 8);
+        SERIALCOM.write(COtwo);SERIALCOM.write(COtwo>> 8);SERIALCOM.write(COtwo>> 16);SERIALCOM.write(COtwo>> 24);
         SERIALCOM.write(RawTemp);SERIALCOM.write(RawTemp>> 8);
         SERIALCOM.write(RawRH);SERIALCOM.write(RawRH>> 8);
         SERIALCOM.write(AbsHum);SERIALCOM.write(AbsHum>> 8);        
-    } else if (userInput.length() == 4){ //setpoint given
+    } else if (userInput.length() == 5){ //setpoint given
       CO2setp = userInput.toInt();
       SERIALCOM.println(CO2setp);
     } else {
@@ -95,12 +99,14 @@ void loop() {
     //Convert the double type humidity to a fixed point 8.8bit number
     AbsHum = doubleToFixedPoint(absHumidity);
     //Set the SGP30 to the correct humidity
-    mySGP30.setHumidity(AbsHum);
     RawTemp = (((Temp+45)/175)*65535);
     RawRH = (RH/100)*65535;
-    //measure CO2 and TVOC levels
-    mySGP30.measureAirQuality();
-    COtwo = mySGP30.CO2;
+    //measure CO2 level
+    if (CO2Sensor.measure()) {
+        COtwo = CO2Sensor.ppm;
+    } else {
+        Serial.println("Sensor communication error.");
+    }
     if (COtwo<CO2setp){
       digitalWrite(CO2PIN,HIGH); 
     } else{
