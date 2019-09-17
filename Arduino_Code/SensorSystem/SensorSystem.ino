@@ -5,8 +5,7 @@ Consists of:
 1) a SHT35 MOD-1030 Humidity and Temperature Sensor
 2) a SandboxElectronics/NDIR
 
-The NDIR sends 8 bytes. The CO2 concentration is a uint32 in ppm.
-
+The NDIR sends 8 bytes, 32 bits. The CO2 concentration is a uint32 in ppm.
 
 It logs every second and sends the most recent value on request.
 To operate, Send message of format '?\r'
@@ -29,7 +28,7 @@ Based on: Mod_1030 demo by Embedded Adventures
 #define INTPIN 3
 #define RSTPIN 2
 #define SERIALCOM Serial
-boolean debug;
+short debug;
 char c;
 String userInput;
 long t1, t2, COtwo, CO2setp;
@@ -51,11 +50,11 @@ void setup() {
   RawRH = 0;
   AbsHum = 0;
   CO2setp = 50000; //50.000 ppm = 5%
-  debug = false;
+  debug = 0;
   if (CO2Sensor.begin()) {
         delay(10000);
     } else {
-        Serial.println("ERROR: Failed to connect to the sensor.");
+        SERIALCOM.println("ERROR: Failed to connect to the sensor.");
         while(1);
     }
 }
@@ -72,15 +71,18 @@ void loop() {
     if (userInput =="*IDN?")
     {
       Identify();
-    } else if (userInput =="?"){ //write values as 8 bytes
+    } else if (userInput =="?"){ //write values as 10 bytes
         SERIALCOM.write(COtwo);SERIALCOM.write(COtwo>> 8);SERIALCOM.write(COtwo>> 16);SERIALCOM.write(COtwo>> 24);
         SERIALCOM.write(RawTemp);SERIALCOM.write(RawTemp>> 8);
         SERIALCOM.write(RawRH);SERIALCOM.write(RawRH>> 8);
-        SERIALCOM.write(AbsHum);SERIALCOM.write(AbsHum>> 8);        
+        SERIALCOM.write(AbsHum);SERIALCOM.write(AbsHum>> 8);
+        SERIALCOM.print("\n");
+    } else if (userInput =="monitor on") {
+      debug = 2;
     } else if (userInput =="debug on") {
-      debug = true;
+      debug = 1;
     } else if (userInput =="debug off") {
-      debug = false;
+      debug = 0;
     } else if (userInput.length() == 5){ //setpoint given
       CO2setp = userInput.toInt();
       SERIALCOM.println(CO2setp);
@@ -102,21 +104,21 @@ void loop() {
     double absHumidity = RHtoAbsolute(RH, Temp);
     //Convert the double type humidity to a fixed point 8.8bit number
     AbsHum = doubleToFixedPoint(absHumidity);
-    //Set the SGP30 to the correct humidity
+    //Calculate RawRH and RawTemp (16 bit)
     RawTemp = (((Temp+45)/175)*65535);
     RawRH = (RH/100)*65535;
     //measure CO2 level
     if (CO2Sensor.measure()) {
         COtwo = CO2Sensor.ppm;
     } else {
-        Serial.println("Sensor communication error.");
+        SERIALCOM.println("Sensor communication error.");
     }
     if (COtwo<CO2setp){
       digitalWrite(CO2PIN,HIGH); 
     } else{
       digitalWrite(CO2PIN,LOW); 
     }
-    if (debug){
+    if (debug==1){
       SERIALCOM.print("Temp =          ");SERIALCOM.print(Temp);SERIALCOM.print("\n");
       SERIALCOM.print("RH =            ");SERIALCOM.print(RH);SERIALCOM.print("\n");
       SERIALCOM.print("AbsHumidity =   ");SERIALCOM.print(absHumidity);SERIALCOM.print("\n");
@@ -124,11 +126,19 @@ void loop() {
       SERIALCOM.print("RawTemp =       ");SERIALCOM.print(RawTemp);SERIALCOM.print("\n");
       SERIALCOM.print("RawRH =         ");SERIALCOM.print(RawRH);SERIALCOM.print("\n");
       SERIALCOM.print("COtwo =         ");SERIALCOM.print(COtwo);SERIALCOM.print("\n");
+      SERIALCOM.print("COtwo setp =    ");SERIALCOM.print(CO2setp);SERIALCOM.print("\n");
       if (COtwo<CO2setp){
         SERIALCOM.print("COtwo ON\n");
       } else {
         SERIALCOM.print("COtwo OFF\n");
       }
+    }
+    if (debug==2){
+      SERIALCOM.write(COtwo);SERIALCOM.write(COtwo>> 8);SERIALCOM.write(COtwo>> 16);SERIALCOM.write(COtwo>> 24);
+      SERIALCOM.write(RawTemp);SERIALCOM.write(RawTemp>> 8);
+      SERIALCOM.write(RawRH);SERIALCOM.write(RawRH>> 8);
+      SERIALCOM.write(AbsHum);SERIALCOM.write(AbsHum>> 8);
+      SERIALCOM.print("\n");
     }
   }
 }
@@ -164,7 +174,7 @@ double RHtoAbsolute (float relHumidity, float tempC) {
   double eSat = 6.11 * pow(10.0, (7.5 * tempC / (237.7 + tempC))); //millibars
   double vaporPressure = (relHumidity/100) * eSat ; 
   double absHumidity = 1000 * vaporPressure * 100 / ((tempC + 273) * 461.5); //Ideal gas law with unit conversions
-  if (debug){
+  if (debug==1){
     SERIALCOM.print("eSat =          ");SERIALCOM.print(eSat);SERIALCOM.print("\n");
     SERIALCOM.print("vaporPressure = ");SERIALCOM.print(vaporPressure);SERIALCOM.print("\n");
     SERIALCOM.print("absHumidity =   ");SERIALCOM.print(absHumidity);SERIALCOM.print("\n");
