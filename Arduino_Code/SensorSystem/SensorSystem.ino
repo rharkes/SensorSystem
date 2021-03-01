@@ -98,12 +98,13 @@ void setup() {
   COtwoSetPoint = 0.05; //co2 fraction
   outputMode = 0;
   if (CO2Sensor.begin()) {
-        delay(10000);
-        SERIALCOM.println("READY");
-    } else {
-        SERIALCOM.println("ERROR: Failed to connect to the sensor.");
-        while(1);
-    }
+      delay(10000);
+      SERIALCOM.println("READY");
+  } else {
+      SERIALCOM.println("ERROR: Failed to connect to the sensor.");
+      while(1);
+  }
+  CO2Sensor.disableAutoCalibration();
 }
 
 void loop() {
