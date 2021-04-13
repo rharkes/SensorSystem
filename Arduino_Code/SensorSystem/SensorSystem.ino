@@ -95,7 +95,7 @@ void setup() {
   rawTemperature = 0;
   rawRelativeHumidity = 0;
   absoluteHumidity = 0;
-  COtwoSetPoint = 0.05; //co2 fraction
+  COtwoSetPoint = 0.05; //CO2 fraction
   outputMode = 0;
   if (CO2Sensor.begin()) {
       delay(10000);
@@ -189,29 +189,42 @@ void loop() {
     rawTemperature = (((temperature+45)/175)*65535);
     rawRelativeHumidity = (relativeHumidity/100)*65535;
     //Set the display
-    if (temperature>36 & temperature<37.1 & abs(COtwo-COtwoSetPoint)<0.001){ // CO2 between 4.9% and 5.1%
-      lcd.setRGB(0, 255, 0);
-    } else {
-      lcd.setRGB(255, 0, 0);
-    }
+//    if (temperature>35.5 & temperature<37.1 & abs(COtwo-COtwoSetPoint)<0.005){ // CO2 between 4.5% and 5.5%
+//      lcd.setRGB(0, 255, 0);
+//    } else {
+//      lcd.setRGB(255, 0, 0);
+//    }
     lcd.clear();
     displayMode = displayMode + 1;
+    double temperatureSetPoint = 36.5; //Temperature setpoint (not regulated here!)
     if (displayMode<5){ //display temperature and humidity
+      if(temperature > temperatureSetPoint) {
+        lcd.setRGB(constrain(255*(abs(temperature-temperatureSetPoint)),0,255), constrain(255-(255*(temperature-temperatureSetPoint)),0,255), 0); //LCD changes from green at setpoint to red when >1 degree higher than setpoint
+      }
+      else if(temperature < (temperatureSetPoint - 1)){
+        lcd.setRGB(constrain(127*(abs(temperature-temperatureSetPoint)),0,255), constrain(255-(127*(abs(temperature-temperatureSetPoint))),25,255), 0); //LCD starts becoming orange when >1 degree lower than setpoint
+//        SERIALCOM.println(String(constrain(127*(abs(temperature-temperatureSetPoint)),0,255)) + ", " + String(constrain(255-(127*(abs(temperature-temperatureSetPoint))),25,255)));
+      }
+      else {  //Temperature <= setpoint-1
+        lcd.setRGB(0, 255, 0);
+      }
       lcd.setCursor(0, 0);
       lcd.print("T = " + String(temperature) + (char)223 +"C");
       lcd.setCursor(0, 1);
       lcd.print("RH= "+String(relativeHumidity)+"%");
     } else { //display CO2 and humidity
       if (pidRunning) {
+        lcd.setRGB(0, constrain(255-255*abs((COtwo-COtwoSetPoint)*50),0,255), constrain(255*abs((COtwo-COtwoSetPoint)*50),0,255));
         lcd.setCursor(0, 0);
         lcd.print("CO2 = " + String(COtwo*100) + "%");
         lcd.setCursor(0, 1);
-        lcd.print("Valve open "+String(int(CO2onFraction*100)) + "%");
+        lcd.print("duty cycle "+String(int(CO2onFraction*100)) + "%");
       } else {
+        lcd.setRGB(255, 255, 255);
         lcd.setCursor(0, 0);
         lcd.print("CO2 = " + String(COtwo*100) + "%");
         lcd.setCursor(0, 1);
-        lcd.print("PID is off");
+        lcd.print("System is off");
       }
     }
     if (displayMode==10){displayMode=0;}
